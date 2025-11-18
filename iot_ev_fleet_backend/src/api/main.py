@@ -1,7 +1,7 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
-from src.db.database import Base, engine
+from src.db.database import Base, _ensure_engine_and_session  # type: ignore
 from src.core.config import get_settings
 
 openapi_tags = [
@@ -42,9 +42,9 @@ def health_check():
     Health Check endpoint.
 
     Returns:
-        JSON object indicating the service is healthy.
+        JSON object indicating the service is healthy and whether DB is disabled.
     """
-    return {"message": "Healthy"}
+    return {"message": "Healthy", "db_disabled": bool(settings.DISABLE_DATABASE)}
 
 
 @app.get(
@@ -72,14 +72,22 @@ def websocket_info():
     "/db/init",
     tags=["db"],
     summary="Initialize DB schema",
-    description="Creates database tables based on current SQLAlchemy models. Use only in development.",
+    description="Creates database tables based on current SQLAlchemy models. Use only in development. Disabled in no-DB mode.",
 )
 def init_db():
     """
     Initialize database tables based on SQLAlchemy models.
 
     Returns:
-        JSON indicating success.
+        JSON indicating success, or 501 when database is disabled or unavailable.
     """
+    settings_local = settings  # already loaded at module import
+    if settings_local.DISABLE_DATABASE:
+        raise HTTPException(status_code=501, detail="Database is disabled (DISABLE_DATABASE=true).")
+
+    engine, _ = _ensure_engine_and_session()  # type: ignore[assignment]
+    if engine is None:
+        raise HTTPException(status_code=501, detail="No database configured (missing DATABASE_URL).")
+
     Base.metadata.create_all(bind=engine)
     return {"status": "ok", "message": "Database schema initialized"}
