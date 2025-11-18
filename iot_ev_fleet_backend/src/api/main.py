@@ -2,12 +2,16 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from src.db.database import Base, engine
+from src.core.config import get_settings
 
 openapi_tags = [
     {"name": "health", "description": "Service health and diagnostics"},
     {"name": "websocket", "description": "Real-time updates (placeholder)"},
     {"name": "db", "description": "Database utilities (migration/init placeholders)"},
 ]
+
+# Load settings once at startup
+settings = get_settings()
 
 app = FastAPI(
     title="IoT EV Fleet Management Backend",
@@ -16,9 +20,16 @@ app = FastAPI(
     openapi_tags=openapi_tags,
 )
 
+# Configure CORS based on settings
+cors_origins = settings.parse_cors_origins()
+if cors_origins == "*":
+    allow_origins = ["*"]
+else:
+    allow_origins = cors_origins  # type: ignore[assignment]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, restrict this to specific domains
+    allow_origins=allow_origins,  # In production, restrict this to specific domains
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -50,7 +61,11 @@ def websocket_info():
     Returns:
         Instructions for WebSocket connection once the feature is implemented.
     """
-    return {"note": "WebSocket endpoints will be documented here once implemented. Expected path: /ws/vehicles"}
+    return {
+        "note": "WebSocket endpoints will be documented here once implemented.",
+        "expected_base_path": settings.WS_BASE_PATH,
+        "example_vehicle_path": f"{settings.WS_BASE_PATH}/vehicles",
+    }
 
 
 @app.get(
