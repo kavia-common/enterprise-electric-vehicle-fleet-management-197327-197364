@@ -38,11 +38,18 @@ class Settings(BaseSettings):
         return parts or ["*"]
 
 
-@lru_cache()
+# PUBLIC_INTERFACE
 def get_settings() -> Settings:
     """
-    PUBLIC_INTERFACE
     Return a cached instance of Settings loaded from environment variables.
     """
-    # pydantic-settings will auto load .env if present
+    return _get_cached_settings()
+
+
+@lru_cache()
+def _get_cached_settings() -> Settings:
+    """
+    Internal cached loader to keep the PUBLIC_INTERFACE cleanly documented above.
+    pydantic-settings will auto load .env if present.
+    """
     return Settings()
