@@ -1,0 +1,6 @@
+Alembic migrations placeholder.
+
+You can initialize alembic with:
+  alembic init alembic
+
+Then configure alembic.ini and env.py to use src.db.database:Base.metadata for autogenerate.
